@@ -23,4 +23,8 @@ export class PrismaAnswersRepository implements AnswersRepository {
 	save(answer: Answer): Promise<void> {
 		throw new Error('Method not implemented.')
 	}
+
+	async delete(answer: Answer): Promise<void> {
+		throw new Error('Method not implemented.')
+	}
 }
