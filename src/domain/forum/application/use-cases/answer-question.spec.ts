@@ -17,7 +17,7 @@ describe('Create Answer', () => {
 	test('create a answer', async () => {
 		const result = await answerQuestionUseCase.execute({
 			questionId: '1',
-			instructorId: '1',
+			authorId: '1',
 			content: 'Nova resposta',
 			attachmentsIds: ['1', '2'],
 		})
