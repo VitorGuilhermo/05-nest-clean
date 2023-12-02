@@ -3,31 +3,65 @@ import { InMemoryQuestionsRepository } from 'test/repositories/in-memory-questio
 import { GetQuestionBySlugUseCase } from './get-question-by-slug'
 import { makeQuestion } from 'test/factories/make-question'
 import { Slug } from '../../enterprise/entities/value-objects/slug'
+import { InMemoryAttachmentsRepository } from 'test/repositories/in-memory-attachments-repository'
+import { InMemoryStudentsRepository } from 'test/repositories/in-memory-students-repository'
+import { makeStudent } from 'test/factories/make-student'
+import { makeAttachment } from 'test/factories/make-attachment'
+import { makeQuestionAttachment } from 'test/factories/make-question-attachments'
 
 let inMemoryQuestionAttachmentsRepository: InMemoryQuestionAttachmentsRepository
+let inMemoryAttachmentsRepository: InMemoryAttachmentsRepository
 let inMemoryQuestionsRepository: InMemoryQuestionsRepository
+let inMemoryStudentsRepository: InMemoryStudentsRepository
 let getQuestionBySlugUseCase: GetQuestionBySlugUseCase
 
 describe('Get Question By Slug', () => {
 	beforeEach(() => {
 		inMemoryQuestionAttachmentsRepository = new InMemoryQuestionAttachmentsRepository()
-		inMemoryQuestionsRepository = new InMemoryQuestionsRepository(inMemoryQuestionAttachmentsRepository)
+		inMemoryAttachmentsRepository = new InMemoryAttachmentsRepository()
+		inMemoryStudentsRepository = new InMemoryStudentsRepository()
+		inMemoryQuestionsRepository = new InMemoryQuestionsRepository(inMemoryQuestionAttachmentsRepository, inMemoryAttachmentsRepository, inMemoryStudentsRepository)
 		getQuestionBySlugUseCase = new GetQuestionBySlugUseCase(inMemoryQuestionsRepository)
 	})
 
 	it('should be able to get a question by slug', async () => {
+		const student = makeStudent({ name: 'John Doe' })
+
+		await inMemoryStudentsRepository.create(student)
+
 		const newQuestion = makeQuestion({
+			authorId: student.id,
 			slug: Slug.create('nova-pergunta')
 		})
-		inMemoryQuestionsRepository.create(newQuestion)     
+		inMemoryQuestionsRepository.create(newQuestion)
+
+		const attachment = makeAttachment({
+			title: 'Some attachment',
+		})
+
+		inMemoryAttachmentsRepository.items.push(attachment)
+
+		inMemoryQuestionAttachmentsRepository.items.push(
+			makeQuestionAttachment({
+				attachmentId: attachment.id,
+				questionId: newQuestion.id,
+			}),
+		)
 
 		const result = await getQuestionBySlugUseCase.execute({
-			slug: 'nova-pergunta'
+			slug: 'nova-pergunta',
 		})
-    
-		expect(result.isRight()).toBe(true)
-		if (result.isRight()) {
-			expect(result.value?.question.title).toEqual(newQuestion.title)
-		}
-	})  
+
+		expect(result.value).toMatchObject({
+			question: expect.objectContaining({
+				title: newQuestion.title,
+				author: 'John Doe',
+				attachments: [
+					expect.objectContaining({
+						title: attachment.title,
+					}),
+				],
+			}),
+		})
+	})
 })
